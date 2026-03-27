@@ -1,0 +1,122 @@
+[
+  {
+    "address": "0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9",
+    "label": "Wintermute",
+    "category": "fund",
+    "source": "Etherscan label"
+  },
+  {
+    "address": "0x9B9647431632AF44be02ddd22477Ed94d14AacAa",
+    "label": "KuCoin Hot Wallet",
+    "category": "whale",
+    "source": "Etherscan label"
+  },
+  {
+    "address": "0x28C6c06298d514Db089934071355E5743bf21d60",
+    "label": "Binance Hot Wallet 14",
+    "category": "whale",
+    "source": "Etherscan label"
+  },
+  {
+    "address": "0xDef1C0ded9bec7F1a1670819833240f027b25EfF",
+    "label": "0x Protocol (DEX Aggregator)",
+    "category": "dex_trader",
+    "source": "Etherscan label"
+  },
+  {
+    "address": "0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503",
+    "label": "Justin Sun",
+    "category": "whale",
+    "source": "Etherscan label / Arkham"
+  },
+  {
+    "address": "0x8103683202aa8DA10536036EDef04CDd865C225E",
+    "label": "a]6z Crypto",
+    "category": "fund",
+    "source": "Arkham Intelligence"
+  },
+  {
+    "address": "0x40B38765696e3d5d8d9d834D8AaD4bB6e418E489",
+    "label": "Robinhood",
+    "category": "whale",
+    "source": "Etherscan label"
+  },
+  {
+    "address": "0x1B7BAa734C00298b9429b518D621753Bb0f6efF2",
+    "label": "Paradigm Fund",
+    "category": "fund",
+    "source": "On-chain analysis"
+  },
+  {
+    "address": "0xDbF5E9c5206d0dB70a90108bf936DA60221dC080",
+    "label": "Vitalik Buterin (Known Wallet)",
+    "category": "whale",
+    "source": "Public ENS / Etherscan"
+  },
+  {
+    "address": "0x6B44ba0a126a2A1a8aa6cD1AdeeD002e141Bcd44",
+    "label": "Polychain Capital",
+    "category": "fund",
+    "source": "Arkham Intelligence"
+  },
+  {
+    "address": "0xF977814e90dA44bFA03b6295A0616a897441aceC",
+    "label": "Binance Hot Wallet 8",
+    "category": "whale",
+    "source": "Etherscan label"
+  },
+  {
+    "address": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "label": "Vitalik.eth",
+    "category": "whale",
+    "source": "ENS / public"
+  },
+  {
+    "address": "0x9845e1909dCa337944a0272F1f9f7249833D2D19",
+    "label": "Nansen Smart Money 1",
+    "category": "dex_trader",
+    "source": "Nansen public labels"
+  },
+  {
+    "address": "0x176F3DAb24a159341c0509bB36B833E7fdd0a132",
+    "label": "Alameda Research (Remnant)",
+    "category": "fund",
+    "source": "Arkham Intelligence"
+  },
+  {
+    "address": "0x9507c04B10486547584C37bCBd931B5a4ecD5137",
+    "label": "Jump Trading",
+    "category": "fund",
+    "source": "Arkham Intelligence"
+  },
+  {
+    "address": "0xAE2Fc483527B8EF99EB5D9B44875F005ba1FaE13",
+    "label": "James Fickel (ETH/BTC Whale)",
+    "category": "whale",
+    "source": "Arkham / on-chain"
+  },
+  {
+    "address": "0x5f65f7b609678448494De4C87521CdF6cEf1e932",
+    "label": "Gemini Hot Wallet",
+    "category": "whale",
+    "source": "Etherscan label"
+  },
+  {
+    "address": "0x220866B1A2219f40e72f5c628B65D54268cA3A9D",
+    "label": "Celsius (Remnant)",
+    "category": "fund",
+    "source": "Etherscan label"
+  },
+  {
+    "address": "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe",
+    "label": "DeFiance Capital",
+    "category": "fund",
+    "source": "Arkham Intelligence"
+  },
+  {
+    "address": "0x3DdfA8eC3052539b6C9549F12cEA2C295cfF5296",
+    "label": "Cumberland DRW",
+    "category": "fund",
+    "source": "Etherscan label"
+  }
+]
