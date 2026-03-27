@@ -1,5 +1,5 @@
 {
-  "name": "smart-money-tracker",
+  "name": "smart-money",
   "version": "0.1.0",
   "description": "Smart Money Tracker - MCP Server for tracking whale wallet activities",
   "type": "module",

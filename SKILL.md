@@ -1,4 +1,4 @@
-# Smart Money Tracker
+# Smart Money
 
 Track whale and smart money wallet activities on Ethereum mainnet. Generates trading signals when watched wallets make significant moves.
 

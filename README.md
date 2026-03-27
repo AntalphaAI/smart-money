@@ -1,4 +1,4 @@
-# Smart Money Tracker
+# Smart Money
 
 🦐 AI Agent 专用的以太坊聪明钱追踪 MCP Server。
 

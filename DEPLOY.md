@@ -1,8 +1,8 @@
-# Smart Money Tracker — 部署文档
+# Smart Money — 部署文档
 
 ## 概述
 
-Smart Money Tracker 是一个 MCP (Model Context Protocol) Server，通过 stdio 传输协议与 AI Agent 通信。它追踪以太坊主网上的聪明钱钱包活动，生成交易信号。
+Smart Money 是一个 MCP (Model Context Protocol) Server，通过 stdio 传输协议与 AI Agent 通信。它追踪以太坊主网上的聪明钱钱包活动，生成交易信号。
 
 ## 技术栈
 
@@ -26,7 +26,7 @@ Smart Money Tracker 是一个 MCP (Model Context Protocol) Server，通过 stdio
 ### 1. 安装依赖
 
 ```bash
-cd smart-money-tracker
+cd smart-money
 npm install
 ```
 
@@ -63,9 +63,9 @@ npm run dev
 ```json
 {
   "mcpServers": {
-    "smart-money-tracker": {
+    "smart-money": {
       "command": "node",
-      "args": ["path/to/smart-money-tracker/dist/index.js"],
+      "args": ["path/to/smart-money/dist/index.js"],
       "env": {
         "MORALIS_API_KEY": "your_key_here",
         "SMT_DATA_DIR": "path/to/data"
@@ -85,7 +85,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 const transport = new StdioClientTransport({
   command: "node",
-  args: ["path/to/smart-money-tracker/dist/index.js"],
+  args: ["path/to/smart-money/dist/index.js"],
   env: {
     MORALIS_API_KEY: process.env.MORALIS_API_KEY,
     SMT_DATA_DIR: "./data/smart-money",
@@ -141,7 +141,7 @@ const result = await client.callTool({
 ## 目录结构
 
 ```
-smart-money-tracker/
+smart-money/
 ├── src/
 │   ├── index.ts              # MCP Server 入口
 │   ├── moralis/

@@ -52,7 +52,7 @@ async function main() {
 
   // ─── MCP Server ───
   const server = new McpServer({
-    name: "smart-money-tracker",
+    name: "smart-money",
     version: "0.1.0",
   });
 
