@@ -1,63 +1,72 @@
-# Smart Money
+# Smart Money Tracker v1.0.1
 
-🦐 AI Agent 专用的以太坊聪明钱追踪 MCP Server。
+> AI Agent on-chain whale tracking skill. Track smart money wallets, get trading signals.
 
-追踪鲸鱼/基金/做市商的链上交易活动，生成分级信号（🔴高/🟡中/🟢低），通过 MCP 协议供 AI Agent 调用。
+## Architecture (v2)
 
-## 功能
-
-- **实时扫描** — 监控 20+ 聪明钱钱包的 ERC20 和 ETH 交易
-- **信号分级** — 自动判定交易重要性（大额买入、首次建仓、持续加仓）
-- **钱包管理** — 动态添加/移除监控钱包
-- **标签系统** — 预置钱包身份标签（基金/鲸鱼/做市商）
-
-## 6 个 MCP Tools
-
-| Tool | 说明 |
-|---|---|
-| `smart_money_signal` | 获取最新交易信号（支持按级别过滤） |
-| `smart_money_watch` | 查看指定钱包的交易活动概览 |
-| `smart_money_scan` | 触发即时扫描 |
-| `smart_money_add` | 添加钱包到监控列表 |
-| `smart_money_remove` | 移除钱包 |
-| `smart_money_list` | 查看监控列表 |
-
-## 快速开始
-
-```bash
-# 安装依赖
-npm install
-
-# 编译
-npm run build
-
-# 运行 (需要 Moralis API Key)
-MORALIS_API_KEY=your_key npm start
+```
+Agent (OpenClaw)  ──MCP──►  Antalpha Server  ──►  Moralis API
+                              │                    │
+                              └──  SQLite DB  ◄────┘
 ```
 
-## 信号规则
+- **MCP remote mode**: Backend on Antalpha server, agents call via MCP protocol
+- **Multi-tenant isolation**: Each agent gets a unique `agent_id`, private watchlists are isolated
+- **Zero config**: No local API keys required for MCP mode
 
-| 级别 | 触发条件 |
-|---|---|
-| 🔴 HIGH | 大额买入 >$50K，或首次建仓新 token |
-| 🟡 MEDIUM | 24h 内同 token ≥2 笔加仓，或大额卖出 >$50K |
-| 🟢 LOW | $1K-$50K 常规交易 |
+## MCP Tools (7)
 
-## 预置钱包 (20个)
+| Tool | Description |
+|------|-------------|
+| `antalpha-register` | Register agent, get `agent_id` + `api_key` (call once) |
+| `smart-money-signal` | Get trading signals (public pool + private addresses) |
+| `smart-money-watch` | View specific wallet's recent activity |
+| `smart-money-list` | List all monitored wallets |
+| `smart-money-custom` | Add/remove private watchlist addresses (max 5) |
+| `smart-money-scan` | Trigger on-demand scan of private addresses |
+| `test-ping` | Connectivity check |
 
-Wintermute, Paradigm, a16z, Jump Trading, Cumberland DRW, DeFiance Capital, Polychain, Justin Sun, Vitalik.eth, Binance, KuCoin, Gemini, Robinhood 等。
+## MCP Server
 
-## 技术栈
+```
+https://mcp-skills.ai.antalpha.com/mcp
+```
 
-- TypeScript + Node.js
-- MCP SDK (`@modelcontextprotocol/sdk`)
-- Moralis Web3 API
-- SQLite (better-sqlite3)
-- Zod (输入校验)
+## Signal Levels
 
-## 部署
+| Level | Trigger |
+|-------|---------|
+| 🔴 HIGH | Large buy >$50K, or first-time token position |
+| 🟡 MEDIUM | Accumulation (≥2 buys of same token in 24h), or large sell >$50K |
+| 🟢 LOW | Regular transfers $1K–$50K |
 
-详见 [DEPLOY.md](./DEPLOY.md) — 包含 Antalpha NestJS 集成指南。
+## Public Pool (19 wallets)
+
+VC Funds, market makers, whales, DeFi protocols, and exchanges including:
+Paradigm, a16z, Wintermute, Jump Trading, Cumberland DRW, Vitalik.eth, Justin Sun, Lido, Uniswap V2, Dragonfly Capital, and more.
+
+## Data Source
+
+- **Moralis Web3 API** — ERC20 transfers, native transfers, token prices
+- **ETH Mainnet only** (V1)
+
+## Changelog
+
+### v1.0.1 (2026-03-28)
+- Fix: `a]6z` typo → `a16z` in watchlist
+- Fix: Jump Trading address inconsistency between watchlist and labels
+- Fix: Normalize all addresses to lowercase for consistent lookup
+- Fix: Remove unverified Vitalik address (`0xDbF5...`), keep only `vitalik.eth`
+- Fix: SKILL.md proper frontmatter with single-line JSON metadata (OpenClaw registration)
+- Fix: Document `api_key` usage from `antalpha-register` return
+- Fix: Consistent agent storage path (`~/.smart-money/agent.json`)
+- Fix: README + SKILL.md tool count updated to 7 (was 5)
+- Improve: Replace 3 exchange hot wallets with Uniswap V2, Lido stETH, Dragonfly Capital
+- Improve: README rewritten in English
+- Improve: Added Security Notes section
+
+### v1.0.0 (2026-03-28)
+- Initial release: MCP remote mode, 20 pre-loaded wallets, signal/watch/list/custom/scan tools
 
 ## License
 
