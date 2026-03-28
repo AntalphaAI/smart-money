@@ -1,6 +1,6 @@
 ---
 name: smart-money
-version: 1.0.1
+version: 1.0.2
 description: Smart money whale tracking skill. Activate when user mentions smart money, whale tracking, 聪明钱, 鲸鱼追踪, fund tracking, on-chain signals, what are whales buying, track wallet, Paradigm, a16z, Wintermute, token buy sell signals, DEX trader monitoring.
 metadata: {"openclaw":{"requires":{},"mcp":{"antalpha":{"url":"https://mcp-skills.ai.antalpha.com/mcp","tools":["antalpha-register","smart-money-signal","smart-money-watch","smart-money-list","smart-money-custom","smart-money-scan"]}}}}
 ---
@@ -122,12 +122,88 @@ Connectivity check. Returns service name and server time.
 3. smart-money-signal { agent_id } ← check results
 ```
 
-### Periodic Monitoring (via cron)
+### Periodic Monitoring
 
-Set up a cron job to periodically:
-1. Call `smart-money-scan` to scan private addresses
-2. Call `smart-money-signal` with `since` = last check time
-3. Alert user if HIGH signals detected
+When the user asks to "monitor", "track", "watch", "set alert", "定时监控", "设置提醒":
+
+**Step 1 — Set up the watchlist:**
+```
+1. smart-money-custom { action: "add", address: "0x...", label: "...", category: "whale" }
+2. smart-money-scan { agent_id }  ← initial scan
+3. Confirm to user: "Added and scanned. Setting up monitoring."
+```
+
+**Step 2 — Create recurring check (adapt to agent capabilities):**
+
+**If agent supports cron/scheduled tasks (e.g. OpenClaw):**
+```
+Create a cron job:
+- Schedule: every 1 hour (or user-specified interval)
+- Task: 
+  1. smart-money-scan { agent_id }
+  2. smart-money-signal { agent_id, level: "high", since: <last_check_time> }
+  3. If new signals found → send alert to user
+  4. If no signals → stay silent
+- Store last_check_time in ~/.smart-money/monitor-state.json
+```
+
+OpenClaw cron prompt example (agent can use this directly):
+```
+Create a cron job that runs every hour:
+1. Call smart-money-scan with my agent_id
+2. Call smart-money-signal with level "high" and since = last check time
+3. If there are new signals, send me a summary
+4. Save the check timestamp for next run
+```
+
+**If agent does NOT support cron:**
+```
+1. Save monitoring intent to ~/.smart-money/monitor-config.json:
+   { "enabled": true, "interval": "1h", "level": "high", "last_check": "..." }
+2. On every new session/conversation start, check if monitoring is enabled
+3. If enabled and enough time has passed since last_check:
+   - Run smart-money-scan + smart-money-signal
+   - Update last_check
+   - Report any new signals
+4. Tell user: "I'll check for new signals each time we chat.
+   For real-time alerts, consider an agent platform with scheduled tasks."
+```
+
+**Step 3 — Monitor state file:**
+
+`~/.smart-money/monitor-state.json`:
+```json
+{
+  "agent_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "monitoring": true,
+  "interval_minutes": 60,
+  "min_level": "high",
+  "last_check": "2026-03-28T16:00:00Z",
+  "addresses_monitored": 2
+}
+```
+
+## Agent Behavior Rules
+
+### On "Monitor this address" / "设置提醒"
+1. Add address via `smart-money-custom` (if not already added)
+2. Run `smart-money-scan` immediately
+3. Ask user preferred check interval (default: 1 hour) and alert level (default: high)
+4. Set up recurring check using best available method (cron > session-start > manual)
+5. Confirm setup with: monitoring target, interval, alert level
+
+### On session start (if monitoring is enabled)
+1. Read `~/.smart-money/monitor-state.json`
+2. If `monitoring: true` and `now - last_check > interval`:
+   - Run scan + signal check silently
+   - Only speak up if new signals found
+   - Update `last_check`
+
+### On "Stop monitoring" / "取消监控"
+1. Set `monitoring: false` in state file
+2. Optionally remove addresses via `smart-money-custom { action: "remove" }`
+3. Cancel cron job if one exists
+4. Confirm: "Monitoring stopped."
 
 ## Message Template
 
