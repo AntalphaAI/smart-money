@@ -6,7 +6,9 @@
 
 # Smart Money Tracker
 
-> AI Agent on-chain whale tracking skill. Track smart money wallets, get real-time trading signals.
+> AI Agent on-chain whale tracking skill. Track smart money wallets, get real-time trading signals including LP pool entries.
+
+**v1.1**: Now tracks whale LP activity — detect when smart money adds/removes liquidity on Uniswap V2/V3.
 
 ## Install
 
@@ -26,7 +28,7 @@ Agent (OpenClaw)  ──MCP──►  Antalpha Server  ──►  Moralis API
 - **Multi-tenant isolation**: Each agent gets a unique `agent_id`, private watchlists are isolated
 - **Zero config**: No local API keys required for MCP mode
 
-## MCP Tools (7)
+## MCP Tools (8)
 
 | Tool | Description |
 |------|-------------|
@@ -36,6 +38,7 @@ Agent (OpenClaw)  ──MCP──►  Antalpha Server  ──►  Moralis API
 | `smart-money-list` | List all monitored wallets |
 | `smart-money-custom` | Add/remove private watchlist addresses (max 5) |
 | `smart-money-scan` | Trigger on-demand scan of private addresses |
+| `smart-money-pool` | **v1.1** Query whale LP activity on Uniswap V2/V3 |
 | `test-ping` | Connectivity check |
 
 ## MCP Server
@@ -58,11 +61,21 @@ Persist both `agent_id` and `api_key` to `~/.smart-money/agent.json`.
 
 ## Signal Levels
 
+**Transfer / Swap signals:**
+
 | Level | Trigger |
 |-------|---------|
 | 🔴 HIGH | Large buy >$50K, or first-time token position |
 | 🟡 MEDIUM | Accumulation (≥2 buys of same token in 24h), or large sell >$50K |
 | 🟢 LOW | Regular transfers $1K–$50K |
+
+**Pool signals (v1.1 — POOL_IN / POOL_OUT):**
+
+| Level | Trigger |
+|-------|--------|
+| 🔴 HIGH | Pool entry > $100K |
+| 🟡 MEDIUM | Pool entry $10K–$100K |
+| 🟢 LOW | Pool entry < $10K |
 
 ## Public Pool (19 wallets)
 
@@ -82,6 +95,13 @@ Paradigm, a16z, Wintermute, Jump Trading, Cumberland DRW, Vitalik.eth, Justin Su
 - All data comes from public blockchain; no user funds are touched
 
 ## Changelog
+
+### v1.1.0 (2026-04-14)
+- New: `smart-money-pool` tool — query whale LP add/remove activity on Uniswap V2/V3
+- New: `smart-money-signal` extended with `POOL_IN` / `POOL_OUT` signal types
+- New: Pool signal levels (>$100K → HIGH, $10K-$100K → MEDIUM, <$10K → LOW)
+- New: Moralis Streams API integration for real-time LP event ingestion
+- V3 tick range fields (`tick_lower` / `tick_upper`) included when available
 
 ### v1.0.2
 - Add: SKILL.md version bump and description refinement
@@ -112,7 +132,9 @@ MIT
 
 # Smart Money 聪明钱追踪器
 
-> AI Agent 链上鲸鱼追踪技能。追踪聪明钱钱包动向，获取实时交易信号。
+> AI Agent 链上鲸鱼追踪技能。追踪聪明钱钱包动向，获取实时交易信号（含 LP 入池信号）。
+
+*v1.1 新增*：追踪鲸鱼 LP 行为 — 当聪明钱在 Uniswap V2/V3 添加流动性时自动弹出高强度建仓信号。
 
 ## 安装
 
@@ -132,7 +154,7 @@ Agent (OpenClaw)  ──MCP──►  Antalpha 服务器  ──►  Moralis API
 - **多租户隔离**：每个 Agent 获得唯一 `agent_id`，私有监控列表相互隔离
 - **零配置**：MCP 模式无需本地 API Key
 
-## MCP 工具（共 7 个）
+## MCP 工具（共 8 个）
 
 | 工具 | 说明 |
 |------|------|
@@ -142,6 +164,7 @@ Agent (OpenClaw)  ──MCP──►  Antalpha 服务器  ──►  Moralis API
 | `smart-money-list` | 列出所有监控钱包 |
 | `smart-money-custom` | 添加/移除私有监控地址（最多 5 个） |
 | `smart-money-scan` | 手动触发私有地址扫描 |
+| `smart-money-pool` | *v1.1* 查询鲸鱼 LP 活动（Uniswap V2/V3 入池/退池） |
 | `test-ping` | 连通性检查 |
 
 ## MCP 服务器地址
@@ -178,6 +201,7 @@ Paradigm、a16z、Wintermute、Jump Trading、Cumberland DRW、Vitalik.eth、孙
 ## 数据来源
 
 - **Moralis Web3 API** — ERC20 转账、原生代币转账、Token 价格
+- **Moralis Streams API**（v1.1）— 实时 LP 事件（Uniswap V2/V3 Mint/Burn Webhook 落库）
 - **仅支持以太坊主网**（V1）
 
 ## 安全说明
@@ -188,6 +212,13 @@ Paradigm、a16z、Wintermute、Jump Trading、Cumberland DRW、Vitalik.eth、孙
 - 所有数据均来自公开链上数据，不涉及用户资金
 
 ## 更新日志
+
+### v1.1.0（2026-04-14）
+- 新增：`smart-money-pool` 工具 — 查询鲸鱼在 Uniswap V2/V3 的 LP 添加/移除活动
+- 新增：`smart-money-signal` 支持 `POOL_IN` / `POOL_OUT` 信号类型
+- 新增：Pool 信号强度等级（>$100K → HIGH，$10K-$100K → MEDIUM，<$10K → LOW）
+- 新增：Moralis Streams API 集成，实时接收 LP 事件并落库
+- V3 tick range 字段（`tick_lower` / `tick_upper`）可选返回
 
 ### v1.0.2
 - 更新：SKILL.md 版本号及描述优化
