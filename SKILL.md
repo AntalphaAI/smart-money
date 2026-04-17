@@ -1,7 +1,7 @@
 ---
 name: smart-money
-version: 1.1.0
-description: Smart money whale tracking skill. Activate when user mentions smart money, whale tracking, 聪明钱, 鲸鱼追踪, fund tracking, on-chain signals, what are whales buying, track wallet, Paradigm, a16z, Wintermute, token buy sell signals, DEX trader monitoring, whale LP activity, pool liquidity, whale pool entry, 鲸鱼入池, 流动性池, LP追踪.
+version: 1.2.0
+description: Smart money whale tracking skill. Activate when user mentions smart money, whale tracking, 聪明钱, 鲸鱼追踪, fund tracking, on-chain signals, what are whales buying, track wallet, Paradigm, a16z, Wintermute, token buy sell signals, DEX trader monitoring, whale LP activity, pool liquidity, whale pool entry, 鲸鱼入池, 流动性池, LP追踪, custom wallet watch, 自定义监控地址, 添加监控钱包, 订阅地址信号.
 metadata: {"openclaw":{"requires":{},"mcp":{"antalpha":{"url":"https://mcp-skills.ai.antalpha.com/mcp","tools":["antalpha-register","smart-money-signal","smart-money-watch","smart-money-list","smart-money-custom","smart-money-scan","smart-money-pool"]}}}}
 ---
 
@@ -9,7 +9,9 @@ metadata: {"openclaw":{"requires":{},"mcp":{"antalpha":{"url":"https://mcp-skill
 
 Track smart money (whale, VC fund, market maker) wallet activities on Ethereum mainnet. Get real-time trading signals when watched wallets make significant moves.
 
-**v1.1 new**: Pool liquidity tracking — detect when whales add/remove liquidity on Uniswap V2/V3. Pool entries are stronger accumulation signals than transfers.
+**v1.2 new**: Custom address subscriptions — add up to 5 personal wallets for real-time Moralis Streams monitoring. Same address added by multiple agents shares one Stream (Reference Counting), no duplicate billing.
+
+**v1.1**: Pool liquidity tracking — detect when whales add/remove liquidity on Uniswap V2/V3.
 
 ## MCP Endpoint
 
@@ -55,13 +57,13 @@ On first use:
 2. If not, call `antalpha-register`, save both `agent_id` and `api_key`
 3. Use `agent_id` for all MCP calls; include `api_key` as header if auth is enabled
 
-## MCP Tools (8)
+## MCP Tools (7)
 
 ### antalpha-register
 Register a new agent. Returns unique `agent_id` and `api_key`. Call once, persist both.
 
 ### smart-money-signal
-Get trading signals from monitored wallets (public pool + your private addresses).
+Get trading signals from monitored wallets (public pool + your custom addresses).
 
 **Parameters:**
 - `agent_id` (required): Your agent ID
@@ -74,34 +76,38 @@ Get trading signals from monitored wallets (public pool + your private addresses
 - 🟡 **MEDIUM**: Accumulation (≥2 buys of same token in 24h) or large sell >$50K
 - 🟢 **LOW**: Regular transfers $1K-$50K
 
-**Signal Types (v1.1):** `BUY` / `SELL` / `TRANSFER` / `POOL_IN` / `POOL_OUT`
+**Signal Types:** `BUY` / `SELL` / `TRANSFER` / `POOL_IN` / `POOL_OUT`
 
 ### smart-money-watch
 View a specific wallet's recent trading activity.
 
 **Parameters:**
 - `agent_id` (required): Your agent ID
-- `address` (required): Ethereum address (must be in public pool or your private list)
+- `address` (required): Ethereum address (must be in public pool or your custom list)
 - `limit` (optional): 1-50 (default: 10)
 
 ### smart-money-list
-List all monitored wallets (public + private, labeled).
+List all monitored wallets (public + custom, labeled).
 
 **Parameters:**
 - `agent_id` (required): Your agent ID
 
 ### smart-money-custom
-Manage your private watchlist (add/remove, max 5 per agent).
+Manage custom watchlist — add, remove, or list personal monitoring addresses (max 5 per agent). v1.2: each add auto-registers a Moralis Stream; same address shared across agents uses one Stream (RC).
 
 **Parameters:**
 - `agent_id` (required): Your agent ID
-- `action` (required): `add` or `remove`
-- `address` (required): Ethereum address
+- `action` (required): `add` / `remove` / `list`
+- `address` (optional): Ethereum address (required for add/remove)
 - `label` (optional): Human-readable name (required for add)
-- `category` (optional): `fund` / `whale` / `dex_trader` / `nft_trader` / `other`
+
+**Behavior:**
+- `add`: validates limit (≤5), creates/reuses Moralis Stream (RC), back-fills `stream_id`
+- `remove`: decrements RC; deletes Moralis Stream only when last reference is released
+- `list`: returns all custom addresses with `stream_id` and status
 
 ### smart-money-scan
-Trigger on-demand scan of your private addresses. Public pool is scanned automatically by the server.
+Trigger on-demand scan of your custom addresses. Public pool is scanned automatically by the server.
 
 **Parameters:**
 - `agent_id` (required): Your agent ID
@@ -117,37 +123,10 @@ Query LP (liquidity pool) activity for smart money addresses. Returns add/remove
 - `limit` (optional): 1-50 (default: 10)
 - `since` (optional): ISO 8601 timestamp
 
-**Response example:**
-```json
-{
-  "address": "0xParadigm...",
-  "events": [
-    {
-      "event_type": "POOL_IN",
-      "dex": "uniswap_v3",
-      "pool_address": "0x88e6A...",
-      "token_pair": "USDC/ETH",
-      "amount_usd": 215000,
-      "tx_hash": "0xabc...",
-      "event_time": "2026-04-14T04:00:00Z",
-      "signal_level": "HIGH"
-    }
-  ],
-  "total": 1
-}
-```
-
 **Signal Levels (Pool events):**
 - 🔴 **HIGH**: POOL_IN > $100K
 - 🟡 **MEDIUM**: POOL_IN $10K–$100K
 - 🟢 **LOW**: POOL_IN < $10K
-
-**Supported DEX (MVP):**
-- Uniswap V2: `Mint` / `Burn` events
-- Uniswap V3: `IncreaseLiquidity` / `DecreaseLiquidity` events (includes `tick_lower` / `tick_upper` when available)
-
-### test-ping
-Connectivity check. Returns service name and server time.
 
 ## Workflow
 
@@ -158,12 +137,23 @@ Connectivity check. Returns service name and server time.
 2. Present signals to user with level/token/amount/context
 ```
 
-### Add Custom Wallet
+### Add Custom Wallet & Monitor (v1.2)
 
 ```
-1. smart-money-custom { agent_id, action: "add", address: "0x...", label: "My Whale", category: "whale" }
-2. smart-money-scan { agent_id }  ← trigger first scan
-3. smart-money-signal { agent_id } ← check results
+1. smart-money-custom { agent_id, action: "add", address: "0x...", label: "My Whale" }
+   → Moralis Stream auto-created; stream_id back-filled
+2. smart-money-scan { agent_id }       ← trigger first scan
+3. smart-money-signal { agent_id }     ← check results
+```
+
+### List / Remove Custom Address
+
+```
+# List all custom addresses
+smart-money-custom { agent_id, action: "list" }
+
+# Remove and auto-deregister Moralis Stream
+smart-money-custom { agent_id, action: "remove", address: "0x..." }
 ```
 
 ### Periodic Monitoring
@@ -172,45 +162,17 @@ When the user asks to "monitor", "track", "watch", "set alert", "定时监控", 
 
 **Step 1 — Set up the watchlist:**
 ```
-1. smart-money-custom { action: "add", address: "0x...", label: "...", category: "whale" }
-2. smart-money-scan { agent_id }  ← initial scan
+1. smart-money-custom { action: "add", address: "0x...", label: "...", }
+2. smart-money-scan { agent_id }
 3. Confirm to user: "Added and scanned. Setting up monitoring."
 ```
 
-**Step 2 — Create recurring check (adapt to agent capabilities):**
-
-**If agent supports cron/scheduled tasks (e.g. OpenClaw):**
+**Step 2 — Create recurring check (OpenClaw cron):**
 ```
-Create a cron job:
-- Schedule: every 1 hour (or user-specified interval)
-- Task: 
-  1. smart-money-scan { agent_id }
-  2. smart-money-signal { agent_id, level: "high", since: <last_check_time> }
-  3. If new signals found → send alert to user
-  4. If no signals → stay silent
-- Store last_check_time in ~/.smart-money/monitor-state.json
-```
-
-OpenClaw cron prompt example (agent can use this directly):
-```
-Create a cron job that runs every hour:
-1. Call smart-money-scan with my agent_id
-2. Call smart-money-signal with level "high" and since = last check time
-3. If there are new signals, send me a summary
-4. Save the check timestamp for next run
-```
-
-**If agent does NOT support cron:**
-```
-1. Save monitoring intent to ~/.smart-money/monitor-config.json:
-   { "enabled": true, "interval": "1h", "level": "high", "last_check": "..." }
-2. On every new session/conversation start, check if monitoring is enabled
-3. If enabled and enough time has passed since last_check:
-   - Run smart-money-scan + smart-money-signal
-   - Update last_check
-   - Report any new signals
-4. Tell user: "I'll check for new signals each time we chat.
-   For real-time alerts, consider an agent platform with scheduled tasks."
+openclaw cron add \
+  --name "smart-money-monitor" \
+  --cron "0 * * * *" \
+  --message "Check smart-money-signal for agent <id>, level high, since last run. Alert if new signals."
 ```
 
 **Step 3 — Monitor state file:**
@@ -229,12 +191,22 @@ Create a cron job that runs every hour:
 
 ## Agent Behavior Rules
 
-### On "Monitor this address" / "设置提醒"
-1. Add address via `smart-money-custom` (if not already added)
+### On "Monitor this address" / "添加监控" / "订阅地址"
+1. Call `smart-money-custom { action: "add", ... }` — Moralis Stream auto-registered
 2. Run `smart-money-scan` immediately
 3. Ask user preferred check interval (default: 1 hour) and alert level (default: high)
-4. Set up recurring check using best available method (cron > session-start > manual)
-5. Confirm setup with: monitoring target, interval, alert level
+4. Set up recurring check (cron preferred)
+5. Confirm setup: target address, interval, alert level, `stream_id`
+
+### On "Remove monitoring" / "取消监控"
+1. Call `smart-money-custom { action: "remove", address: "0x..." }` — Stream auto-deregistered
+2. Update or cancel cron job
+3. Confirm: "Monitoring stopped. Moralis Stream deregistered."
+
+### On "List my custom addresses" / "查看我的自定义监控"
+1. Call `smart-money-custom { action: "list" }`
+2. Show: address, label, stream_id (active/inactive), added_at
+3. Show remaining slots: `5 - current_count`
 
 ### On session start (if monitoring is enabled)
 1. Read `~/.smart-money/monitor-state.json`
@@ -242,12 +214,6 @@ Create a cron job that runs every hour:
    - Run scan + signal check silently
    - Only speak up if new signals found
    - Update `last_check`
-
-### On "Stop monitoring" / "取消监控"
-1. Set `monitoring: false` in state file
-2. Optionally remove addresses via `smart-money-custom { action: "remove" }`
-3. Cancel cron job if one exists
-4. Confirm: "Monitoring stopped."
 
 ## Message Template
 
@@ -265,7 +231,7 @@ Accumulating ARB — $45K
 TX: 0x123...456 | 2026-03-28 15:20 UTC
 ```
 
-**Pool signal template (v1.1):**
+**Pool signal template:**
 ```
 🔴 HIGH Signal | Paradigm Fund
 POOL_IN — USDC/ETH (Uniswap V3)
@@ -273,44 +239,61 @@ POOL_IN — USDC/ETH (Uniswap V3)
 TX: 0xabc...def | 2026-04-14 04:00 UTC
 ```
 
+**Custom address signal template (v1.2):**
+```
+🟡 MEDIUM Signal | My Custom Whale [custom]
+Buy ETH — $38K
+2nd buy in 24h
+Stream: mock-stream-102
+TX: 0xdef...789 | 2026-04-17 08:10 UTC
+```
+
 ## Public Pool (19 wallets)
 
-VC Funds: Paradigm, a16z, Polychain Capital, Dragonfly Capital, DeFiance Capital
-Market Makers: Wintermute, Jump Trading, Cumberland DRW
-Whales: Vitalik.eth, Justin Sun, James Fickel
-DeFi: Uniswap V2 ETH/USDT, Lido stETH, 0x Protocol
-Exchanges: Binance Hot Wallet 14, Robinhood
+VC Funds: Paradigm, a16z, Polychain Capital, Dragonfly Capital, DeFiance Capital  
+Market Makers: Wintermute, Jump Trading, Cumberland DRW  
+Whales: Vitalik.eth, Justin Sun, James Fickel  
+DeFi: Uniswap V2 ETH/USDT, Lido stETH, 0x Protocol  
+Exchanges: Binance Hot Wallet 14, Robinhood  
 Other: Nansen Smart Money 1, Alameda Research (Remnant), Celsius (Remnant)
 
 ## Data Source
 
 - **Moralis Web3 API** — ERC20 transfers, native transfers, token prices
-- **Moralis Streams API** (v1.1) — real-time LP events via webhook (Uniswap V2/V3 Mint/Burn)
+- **Moralis Streams API** (v1.1+) — real-time LP events + custom address webhooks
 - **ETH Mainnet only** (V1)
 
 ## Changelog
 
+### v1.2.0 (2026-04-17)
+- New: `smart-money-custom` upgraded — `add/remove/list` with Moralis Streams auto-registration
+- New: Reference Counting (RC) — same address across multiple agents shares ONE Moralis Stream
+- New: `sm_stream_registry` global address→Stream registry table
+- New: `agent_watched_wallets` per-agent custom watchlist table
+- New: `smart-money-signal` merges public pool + agent custom addresses (two-path query)
+- Improved: `smart-money-custom action=list` returns `stream_id` + `added_at`
+
 ### v1.1.0 (2026-04-14)
-- New tool: `smart-money-pool` — query whale LP add/remove activity on Uniswap V2/V3
-- Extended `smart-money-signal` with new signal types: `POOL_IN` / `POOL_OUT`
-- Pool signal levels: >$100K → HIGH, $10K-$100K → MEDIUM, <$10K → LOW
-- Data source extended: Moralis Streams API for real-time LP event ingestion
-- V3 tick range fields (`tick_lower` / `tick_upper`) included when available
+- New: `smart-money-pool` tool — query whale LP add/remove activity on Uniswap V2/V3
+- New: `smart-money-signal` extended with `POOL_IN` / `POOL_OUT` signal types
+- New: Moralis Streams API integration for real-time LP event ingestion
 
 ### v1.0.2
 - Added auto-monitoring setup guide and agent behavior rules
 
 ### v1.0.1
-- Fix code review issues (P0-P2), clean up public repo
+- Various bugfixes, address normalization, README rewrite
+
+### v1.0.0 (2026-03-28)
+- Initial release
 
 ## Security Notes
 
 - Agent identity via UUID — no private keys involved
 - `api_key` is secret; store securely, never expose in logs or prompts
-- Private watchlist addresses are isolated per agent_id (multi-tenant)
+- Custom watchlist addresses are isolated per `agent_id` (multi-tenant)
+- Moralis Stream deregistered automatically on `remove` (no zombie streams)
 - All data comes from public blockchain; no user funds are touched
-
----
 
 ---
 
