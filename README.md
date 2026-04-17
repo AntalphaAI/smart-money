@@ -8,7 +8,7 @@
 
 > AI Agent on-chain whale tracking skill. Track smart money wallets, get real-time trading signals including LP pool entries and custom address subscriptions.
 
-**v1.2**: Add up to 5 personal wallets for real-time monitoring. Same address shared across agents uses one Moralis Stream (Reference Counting) — no duplicate billing.  
+**v1.2**: Add up to 5 personal wallets for real-time monitoring. Same address shared across agents uses one subscription stream (Reference Counting) — no duplicate billing.  
 **v1.1**: Whale LP activity tracking — detect when smart money adds/removes liquidity on Uniswap V2/V3.
 
 ## Install
@@ -20,7 +20,7 @@ openclaw skill install https://github.com/AntalphaAI/smart-money
 ## Architecture
 
 ```
-Agent (OpenClaw)  ──MCP──►  Antalpha Server  ──►  Moralis API
+Agent (OpenClaw)  ──MCP──►  Antalpha Server  ──►  On-chain Data Provider
                               │                    (Streams + REST)
                   agent_id    ├── smart_money_watchlist
                               ├── agent_watched_wallets   ← v1.2 new
@@ -30,7 +30,7 @@ Agent (OpenClaw)  ──MCP──►  Antalpha Server  ──►  Moralis API
 - **MCP remote mode**: Backend on Antalpha server, agents call via MCP protocol
 - **Multi-tenant isolation**: Each agent gets a unique `agent_id`, custom watchlists are isolated per agent
 - **Zero config**: No local API keys required for MCP mode
-- **RC-based Streams**: Same wallet address across multiple agents shares one Moralis Stream
+- **RC-based Streams**: Same wallet address across multiple agents shares one subscription stream
 
 ## Quick Start
 
@@ -46,7 +46,7 @@ Args: { agent_id: "...", level: "high" }
 # Step 3 (v1.2): Add your own address
 Tool: smart-money-custom
 Args: { agent_id: "...", action: "add", address: "0x...", label: "My Whale" }
-→ Moralis Stream auto-created, stream_id back-filled
+→ On-chain subscription registered, stream_id back-filled
 
 # Step 4: Query merged signals (public + your custom)
 Tool: smart-money-signal
@@ -67,7 +67,7 @@ https://mcp-skills.ai.antalpha.com/mcp
 | `smart-money-signal` | v1.2 | Get trading signals — public pool **+** your custom addresses merged |
 | `smart-money-watch` | v1 | View a specific wallet's recent activity |
 | `smart-money-list` | v1 | List all monitored wallets (public + custom) |
-| `smart-money-custom` | v1.2 | **Add / remove / list** custom addresses with auto Moralis Streams RC |
+| `smart-money-custom` | v1.2 | **Add / remove / list** custom addresses with auto on-chain subscription RC |
 | `smart-money-scan` | v1 | Trigger on-demand scan of custom addresses |
 | `smart-money-pool` | v1.1 | Query whale LP activity on Uniswap V2/V3 |
 
@@ -111,7 +111,7 @@ smart-money-watch { agent_id, address: "0xParadigm...", limit: 10 }
 > "Track this address for me: 0xABC... — it's my target whale"
 
 ```
-# Step 1: Add to custom list (Moralis Stream auto-created)
+# Step 1: Add to custom list (on-chain subscription auto-registered)
 smart-money-custom {
   agent_id,
   action: "add",
@@ -128,9 +128,9 @@ smart-money-signal { agent_id, level: "all" }
 
 > ⚠️ **After Step 1, agent MUST show this warning:**
 >
-> *Moralis is now tracking `0xABC...` in real time. However, MCP cannot push notifications to you — signals are stored server-side only. **Without a scheduled Cron task, you will NEVER receive alerts.***
+> *The data provider is now tracking `0xABC...` in real time. However, MCP cannot push notifications to you — signals are stored server-side only. **Without a scheduled Cron task, you will NEVER receive alerts.***
 >
-> *Recommend: create a 15-min Cron task now (see Scenario 7). You can always skip and pull manually, but you may miss time-sensitive signals.*
+> *Strongly recommended: create a 15-min Cron task now — I will execute it for you automatically. Skipping this means you will not receive any alerts.*
 
 ```bash
 # Step 4 (recommended — after user confirms):
@@ -141,7 +141,7 @@ openclaw cron add \
   --message "Call smart-money-signal agent_id <id> level high since <last_check>. Alert if new signals. Reply HEARTBEAT_OK if none."
 ```
 
-**Result**: Address is monitored via Moralis Streams. Combined signals (public pool + custom) returned by `smart-money-signal`. Cron closes the notification loop.
+**Result**: Address is monitored via on-chain data subscription. Combined signals (public pool + custom) returned by `smart-money-signal`. Cron closes the notification loop.
 
 ---
 
@@ -175,7 +175,7 @@ Response:
 smart-money-custom { agent_id, action: "remove", address: "0xABC..." }
 ```
 
-**Result**: Address removed, Moralis Stream deregistered (if no other agents are watching the same address via Reference Counting).
+**Result**: Address removed, on-chain subscription cancelled (if no other agents are watching the same address via Reference Counting).
 
 ---
 
@@ -206,7 +206,7 @@ Pool: 0x88e6A...  TX: 0xabc...def | 2026-04-14 04:00 UTC
 
 > "Alert me every hour if any high-level signals appear"
 
-> ⚠️ **Why this matters**: Moralis Streams push events to the MCP Server in real time, but MCP cannot push to you. Without this Cron, signals accumulate silently and you receive zero notifications.
+> ⚠️ **Why this matters**: The on-chain data provider pushes events to the MCP Server in real time, but MCP cannot push to you. Without this Cron, signals accumulate silently and you receive zero notifications.
 
 ```bash
 # Recommended: 15-min interval for responsive alerts with reasonable token cost
@@ -225,10 +225,10 @@ openclaw cron add \
 
 > Agent A and Agent B both add `0xVitalik...`
 
-- Agent A adds → Moralis Stream created, `ref_count = 1`
-- Agent B adds → **same Stream reused**, `ref_count = 2`, no duplicate billing
-- Agent A removes → `ref_count = 1`, Stream still alive
-- Agent B removes → `ref_count = 0`, Stream deleted automatically
+- Agent A adds → on-chain subscription created, `ref_count = 1`
+- Agent B adds → **same subscription reused**, `ref_count = 2`, no duplicate billing
+- Agent A removes → `ref_count = 1`, subscription still active
+- Agent B removes → `ref_count = 0`, subscription cancelled automatically
 
 ---
 
@@ -261,8 +261,8 @@ Other: Nansen Smart Money 1, Alameda Research (Remnant), Celsius (Remnant)
 
 ## Data Source
 
-- **Moralis Web3 API** — ERC20 transfers, native transfers, token prices
-- **Moralis Streams API** — real-time LP events + custom address webhooks (v1.1+)
+- **On-chain data provider** — ERC20 transfers, native transfers, token prices
+- **Real-time event streams** (v1.1+) — LP events + custom address webhook ingestion
 - **ETH Mainnet only** (V1)
 
 ## Security Notes
@@ -270,7 +270,7 @@ Other: Nansen Smart Money 1, Alameda Research (Remnant), Celsius (Remnant)
 - Agent identity via UUID — no private keys involved
 - `api_key` is secret; store securely, never expose in logs or prompts
 - Custom watchlist addresses are isolated per `agent_id` (multi-tenant)
-- Moralis Stream deregistered automatically on `remove` (no zombie streams, RC-guarded)
+- On-chain subscription cancelled automatically on `remove` (no zombie subscriptions, RC-guarded)
 - All data comes from public blockchain; no user funds are touched
 
 ## Changelog
@@ -282,15 +282,15 @@ Other: Nansen Smart Money 1, Alameda Research (Remnant), Celsius (Remnant)
 - Scenario 3 and 7 updated with actionable Cron commands
 
 ### v1.2.0 (2026-04-17)
-- `smart-money-custom` upgraded: supports `add` / `remove` / `list` with Moralis Streams auto-registration
-- Reference Counting (RC): same address across multiple agents shares ONE Moralis Stream; auto-cleanup when last reference released
+- `smart-money-custom` upgraded: supports `add` / `remove` / `list` with on-chain subscription auto-management
+- Reference Counting (RC): same address across multiple agents shares ONE subscription stream; auto-cleanup when last reference released
 - New DB tables: `agent_watched_wallets`, `sm_stream_registry`
 - `smart-money-signal` merges public pool + agent custom addresses in one response
 
 ### v1.1.0 (2026-04-14)
 - New: `smart-money-pool` — whale LP add/remove events (Uniswap V2/V3)
 - New: `POOL_IN` / `POOL_OUT` signal types in `smart-money-signal`
-- New: Moralis Streams API integration for real-time LP webhook ingestion
+- New: Real-time on-chain event stream integration for LP webhook ingestion
 
 ### v1.0.2
 - Add: monitoring setup guide, agent behavior rules
@@ -313,7 +313,7 @@ MIT
 
 > AI Agent 链上鲸鱼追踪技能。追踪聪明钱钱包动向，获取实时交易信号（含 LP 入池信号与自定义地址订阅）。
 
-**v1.2 新增**：自定义地址订阅 — 最多添加 5 个个人监控地址，通过 Moralis Streams 实时推送信号。相同地址跨多个 Agent 共享一个 Stream（引用计数），避免重复计费。  
+**v1.2 新增**：自定义地址订阅 — 最多添加 5 个个人监控地址，通过实时数据订阅服务推送信号。相同地址跨多个 Agent 共享一个订阅流（引用计数），避免重复计费。  
 **v1.1 新增**：鲸鱼 LP 行为追踪 — 当聪明钱在 Uniswap V2/V3 添加流动性时自动生成高强度信号。
 
 ## 安装
@@ -325,7 +325,7 @@ openclaw skill install https://github.com/AntalphaAI/smart-money
 ## 架构
 
 ```
-Agent (OpenClaw)  ──MCP──►  Antalpha 服务器  ──►  Moralis API
+Agent (OpenClaw)  ──MCP──►  Antalpha 服务器  ──►  On-chain Data Provider
                               │                    (Streams + REST)
                   agent_id    ├── smart_money_watchlist
                               ├── agent_watched_wallets   ← v1.2 新增
@@ -335,7 +335,7 @@ Agent (OpenClaw)  ──MCP──►  Antalpha 服务器  ──►  Moralis API
 - **MCP 远程模式**：后端部署在 Antalpha 服务器，Agent 通过 MCP 协议调用
 - **多租户隔离**：每个 Agent 获得唯一 `agent_id`，自定义监控列表相互隔离
 - **零配置**：MCP 模式无需本地 API Key
-- **引用计数 Stream**：多 Agent 监控同一地址时共享一个 Moralis Stream
+- **引用计数 Stream**：多 Agent 监控同一地址时共享一个订阅流
 
 ## 快速上手
 
@@ -351,7 +351,7 @@ Agent (OpenClaw)  ──MCP──►  Antalpha 服务器  ──►  Moralis API
 # 第三步（v1.2）：添加自定义地址
 工具：smart-money-custom
 参数：{ agent_id: "...", action: "add", address: "0x...", label: "目标鲸鱼" }
-→ Moralis Stream 自动创建，stream_id 回填
+→ 链上订阅自动创建，stream_id 回填
 
 # 第四步：查询合并信号（公共池 + 自定义地址）
 工具：smart-money-signal
@@ -372,7 +372,7 @@ https://mcp-skills.ai.antalpha.com/mcp
 | `smart-money-signal` | v1.2 | 获取交易信号（公共池 **+** 自定义地址合并） |
 | `smart-money-watch` | v1 | 查看指定钱包的近期活动 |
 | `smart-money-list` | v1 | 列出所有监控钱包（公共 + 自定义） |
-| `smart-money-custom` | v1.2 | **添加 / 删除 / 查看**自定义地址，自动管理 Moralis Streams（引用计数） |
+| `smart-money-custom` | v1.2 | **添加 / 删除 / 查看**自定义地址，自动管理链上订阅（引用计数） |
 | `smart-money-scan` | v1 | 手动触发自定义地址扫描 |
 | `smart-money-pool` | v1.1 | 查询鲸鱼 LP 活动（Uniswap V2/V3 入池/退池） |
 
@@ -416,7 +416,7 @@ smart-money-watch { agent_id, address: "0xParadigm...", limit: 10 }
 > "帮我追踪这个地址：0xABC...，这是我盯的目标鲸鱼"
 
 ```
-# 第一步：添加到自定义列表（Moralis Stream 自动创建）
+# 第一步：添加到自定义列表（链上订阅自动创建）
 smart-money-custom {
   agent_id,
   action: "add",
@@ -433,7 +433,7 @@ smart-money-signal { agent_id, level: "all" }
 
 > ⚠️ **添加完成后，Agent 必须显示以下强提示：**
 >
-> *Moralis 已开始实时监控 `0xABC...`，但 MCP 协议无法主动推送通知——链上信号会存入数据库，但你**永远收不到提醒**。如果不创建定时检查任务，错过重要信号只能靠手动查询。*
+> *服务商已开始实时监控 `0xABC...`，但 MCP 协议无法主动推送通知——链上信号会存入数据库，但你**永远收不到提醒**。不创建定时检查任务将无法收到任何告警。*
 >
 > *建议现在创建 15 分钟定时任务（见场景七）。不创建也可以，但业务龙头可能已过。*
 
@@ -446,7 +446,7 @@ openclaw cron add \
   --message "使用 agent_id <id> 调用 smart-money-signal，level 为 high，since 为 <上次检查时间>。有新信号则通知我，无新信号则静默回复 HEARTBEAT_OK。"
 ```
 
-**效果**：自定义地址通过 Moralis Streams 实时监控，Cron 定时拉取信号，信号到达即时通知用户。
+**效果**：自定义地址通过实时数据订阅监控，Cron 定时拉取信号，信号到达即时通知用户。
 
 ---
 
@@ -480,7 +480,7 @@ smart-money-custom { agent_id, action: "list" }
 smart-money-custom { agent_id, action: "remove", address: "0xABC..." }
 ```
 
-**效果**：地址从列表中移除，对应 Moralis Stream 自动注销（引用计数归零时才真正删除）。
+**效果**：地址从列表中移除，对应链上订阅自动注销（引用计数归零时才真正取消）。
 
 ---
 
@@ -511,7 +511,7 @@ POOL_IN — USDC/ETH（Uniswap V3）· $215K
 
 > "每小时提醒我一次高强度信号"
 
-> ⚠️ **为什么必须创建**：Moralis Streams 实时将信号推送到 MCP Server，但 MCP 无法主动通知你。不设置 Cron，信号将静默积庋，你永远收不到提醒。
+> ⚠️ **为什么必须创建**：数据服务商实时将信号推送到 MCP Server，但 MCP 无法主动通知你。不设置 Cron，信号将静默积庋，你永远收不到提醒。
 
 ```bash
 # 推荐间隔：15 分钟（响应速度与 Token 消耗的平衡点）
@@ -530,7 +530,7 @@ openclaw cron add \
 
 > Agent A 和 Agent B 都添加了 `0xVitalik...`
 
-- Agent A 添加 → Moralis Stream 创建，`ref_count = 1`
+- Agent A 添加 → 链上订阅创建，`ref_count = 1`
 - Agent B 添加 → **复用同一 Stream**，`ref_count = 2`，无重复计费
 - Agent A 删除 → `ref_count = 1`，Stream 继续存活
 - Agent B 删除 → `ref_count = 0`，Stream 自动删除
@@ -566,8 +566,8 @@ DeFi 协议：Uniswap V2 ETH/USDT、Lido stETH、0x Protocol
 
 ## 数据来源
 
-- **Moralis Web3 API** — ERC20 转账、原生代币转账、Token 价格
-- **Moralis Streams API** — 实时 LP 事件 + 自定义地址 Webhook（v1.1+）
+- **数据服务商** — ERC20 转账、原生代币转账、Token 价格
+- **实时事件订阅**（v1.1+）— LP 事件 + 自定义地址 Webhook 落库
 - **仅支持以太坊主网**（V1）
 
 ## 安全说明
@@ -575,7 +575,7 @@ DeFi 协议：Uniswap V2 ETH/USDT、Lido stETH、0x Protocol
 - Agent 身份通过 UUID 标识，不涉及私钥
 - `api_key` 为私密凭据，请安全存储，切勿在日志或提示词中暴露
 - 自定义监控列表按 `agent_id` 隔离（多租户）
-- `remove` 操作自动注销 Moralis Stream（引用计数保护，无僵尸 Stream）
+- `remove` 操作自动注销链上订阅（引用计数保护，无僵尸订阅）
 - 所有数据均来自公开链上数据，不涉及用户资金
 
 ## 更新日志
@@ -587,15 +587,15 @@ DeFi 协议：Uniswap V2 ETH/USDT、Lido stETH、0x Protocol
 - 场景三、场景七均已更新为可直接执行的 Cron 命令
 
 ### v1.2.0（2026-04-17）
-- 升级：`smart-money-custom` 支持 `add` / `remove` / `list`，自动管理 Moralis Streams
-- 新增：引用计数（RC）— 多 Agent 监控同一地址共享一个 Stream，最后一个引用释放时自动删除
+- 升级：`smart-money-custom` 支持 `add` / `remove` / `list`，自动管理链上订阅
+- 新增：引用计数（RC）— 多 Agent 监控同一地址共享一个订阅流，最后一个引用释放时自动取消
 - 新增：数据表 `agent_watched_wallets`、`sm_stream_registry`
 - 升级：`smart-money-signal` 合并公共池 + 自定义地址两路结果，统一返回
 
 ### v1.1.0（2026-04-14）
 - 新增：`smart-money-pool` 工具，查询鲸鱼 LP 添加/移除活动（Uniswap V2/V3）
 - 新增：`POOL_IN` / `POOL_OUT` 信号类型
-- 新增：Moralis Streams API 集成，实时接收 LP 事件
+- 新增：实时事件订阅集成，接收 LP 事件
 
 ### v1.0.2
 - 新增监控设置指南和 Agent 行为规则

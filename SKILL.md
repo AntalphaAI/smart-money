@@ -9,9 +9,9 @@ metadata: {"openclaw":{"requires":{},"mcp":{"antalpha":{"url":"https://mcp-skill
 
 Track smart money (whale, VC fund, market maker) wallet activities on Ethereum mainnet. Get real-time trading signals when watched wallets make significant moves.
 
-**v1.2.1**: After adding a custom address, agent **must** prompt user to set up a Cron monitoring task — without it, signals land in the database but the user receives no notification.
+**v1.2.1**: After adding a custom address, agent **must** guide user to create a Cron monitoring task — without it, signals land in the database but the user receives no notification.
 
-**v1.2**: Custom address subscriptions — add up to 5 personal wallets for real-time Moralis Streams monitoring. Same address added by multiple agents shares one Stream (Reference Counting), no duplicate billing.
+**v1.2**: Custom address subscriptions — add up to 5 personal wallets for real-time on-chain monitoring. Same address added by multiple agents shares one subscription stream (Reference Counting), no duplicate billing.
 
 **v1.1**: Pool liquidity tracking — detect when whales add/remove liquidity on Uniswap V2/V3.
 
@@ -95,7 +95,7 @@ List all monitored wallets (public + custom, labeled).
 - `agent_id` (required): Your agent ID
 
 ### smart-money-custom
-Manage custom watchlist — add, remove, or list personal monitoring addresses (max 5 per agent). v1.2: each add auto-registers a Moralis Stream; same address shared across agents uses one Stream (RC).
+Manage custom watchlist — add, remove, or list personal monitoring addresses (max 5 per agent). v1.2: each add auto-registers an on-chain data subscription; same address shared across agents reuses one subscription stream (RC).
 
 **Parameters:**
 - `agent_id` (required): Your agent ID
@@ -104,8 +104,8 @@ Manage custom watchlist — add, remove, or list personal monitoring addresses (
 - `label` (optional): Human-readable name (required for add)
 
 **Behavior:**
-- `add`: validates limit (≤5), creates/reuses Moralis Stream (RC), back-fills `stream_id`
-- `remove`: decrements RC; deletes Moralis Stream only when last reference is released
+- `add`: validates limit (≤5), creates/reuses subscription stream (RC), back-fills `stream_id`
+- `remove`: decrements RC; cancels subscription only when last reference is released
 - `list`: returns all custom addresses with `stream_id` and status
 
 ### smart-money-scan
@@ -143,10 +143,10 @@ Query LP (liquidity pool) activity for smart money addresses. Returns add/remove
 
 ```
 1. smart-money-custom { agent_id, action: "add", address: "0x...", label: "My Whale" }
-   → Moralis Stream auto-created; stream_id back-filled
+   → On-chain subscription registered; stream_id back-filled
 2. smart-money-scan { agent_id }       ← trigger first scan
 3. smart-money-signal { agent_id }     ← check current results
-4. ⚠️  MANDATORY: Prompt user to set up Cron (see Agent Behavior Rules below)
+4. ⚠️  MANDATORY: Guide user to create Cron (see Agent Behavior Rules below)
    → Without Cron, signals are stored server-side but user will NEVER be notified
 ```
 
@@ -156,13 +156,13 @@ Query LP (liquidity pool) activity for smart money addresses. Returns add/remove
 # List all custom addresses
 smart-money-custom { agent_id, action: "list" }
 
-# Remove and auto-deregister Moralis Stream
+# Remove and auto-cancel on-chain subscription
 smart-money-custom { agent_id, action: "remove", address: "0x..." }
 ```
 
 ### Periodic Monitoring (v1.2.1 — Mandatory Cron Setup)
 
-> ⚠️ **Critical**: Moralis Streams push events to the MCP Server in real time, but MCP cannot push to the agent. Without a Cron task, signals are stored server-side and the user will **never receive any notification**. Always set up Cron after adding a custom address.
+> ⚠️ **Critical**: The on-chain data provider pushes events to the MCP Server in real time, but MCP cannot push to the agent. Without a Cron task, signals are stored server-side and the user will **never receive any notification**. Always create a Cron task after adding a custom address — do not leave it optional.
 
 When the user asks to "monitor", "track", "watch", "set alert", "定时监控", "设置提醒", or after any `smart-money-custom action=add`:
 
@@ -170,27 +170,29 @@ When the user asks to "monitor", "track", "watch", "set alert", "定时监控", 
 ```
 1. smart-money-custom { action: "add", address: "0x...", label: "..." }
 2. smart-money-scan { agent_id }
-3. Confirm to user: "Address added, Moralis Stream registered."
+3. Confirm to user: "Address added, on-chain subscription registered."
 ```
 
-**Step 2 — MANDATORY: Prompt user to create Cron (strong nudge)**
+**Step 2 — MANDATORY: Guide user to create Cron immediately**
 
 Use this exact language (adapt to locale):
 ```
 ⚠️ 重要提示 / Important:
 
-Moralis 已实时监控该地址，但 MCP 协议无法主动推送通知。
-如果不创建定时检查任务，链上信号会落库，但你将永远收不到提醒。
+服务商已开始实时监控该地址，但 MCP 协议无法主动推送通知。
+链上信号会实时落库，但不创建定时检查任务你将永远收不到提醒。
+强烈建议立即创建定时任务，我来帮你自动完成。
 
-Moralis is now tracking this address in real time, but MCP cannot push
-notifications to you. Without a scheduled check task, on-chain signals
-will be stored but you will NEVER be alerted.
+The data provider is now tracking this address in real time, but MCP
+cannot push notifications to you. On-chain signals will be stored, but
+you will NEVER be alerted without a scheduled check task.
+Let me create the Cron task for you now.
 
-建议创建定时任务（推荐间隔：15 分钟）：
-Recommend creating a scheduled task (suggested interval: 15 min):
+强烈建议：立即创建 15 分钟定时任务（我帮你自动执行）：
+Strongly recommended: create a 15-min Cron task now (auto-executed for you):
 ```
 
-**Step 3 — Create Cron (after user confirms):**
+**Step 3 — Create Cron immediately (agent executes without waiting for extra confirmation):**
 
 Recommended interval: *15 minutes* (balances responsiveness vs. token cost).
 ```bash
@@ -206,6 +208,7 @@ Key Cron design principles:
 - Reply `HEARTBEAT_OK` when no new signals (zero output tokens)
 - Pass `since` = last check timestamp to avoid duplicate alerts
 - 15-min interval ≈ ~96 checks/day per user; each check ~500 tokens if silent
+- Agent should execute this automatically after `add` succeeds — do not wait for user to ask
 
 **Step 4 — Save monitor state:**
 
@@ -225,19 +228,17 @@ Key Cron design principles:
 ## Agent Behavior Rules
 
 ### On "Monitor this address" / "添加监控" / "订阅地址" (v1.2.1)
-1. Call `smart-money-custom { action: "add", ... }` — Moralis Stream auto-registered
+1. Call `smart-money-custom { action: "add", ... }` — on-chain subscription auto-registered
 2. Run `smart-money-scan` immediately for baseline
-3. **⚠️ MANDATORY PROMPT**: Show the strong nudge message (see Periodic Monitoring → Step 2)
-   - Do NOT skip this step even if user didn't explicitly ask for notifications
-   - Explicitly warn: *"Without a Cron task, you will NEVER receive alerts"*
-4. If user confirms → create Cron with 15-min interval, `--session isolated`
-5. If user declines → acknowledge but note they can check manually anytime
-6. Confirm: address added, stream_id, Cron status (created / skipped by user)
+3. **⚠️ MANDATORY**: Show the strong nudge (see Periodic Monitoring → Step 2), then **immediately proceed to create the Cron task** — do not make it optional, do not wait for user to ask
+4. Execute `openclaw cron add` with 15-min interval and `--session isolated`
+5. Confirm: address added, stream_id, Cron job name and schedule
+6. Only if user explicitly says "no cron" / "cancel" / "不要" — acknowledge and skip, but warn one more time that alerts will not work
 
 ### On "Remove monitoring" / "取消监控"
-1. Call `smart-money-custom { action: "remove", address: "0x..." }` — Stream auto-deregistered
-2. Update or cancel cron job
-3. Confirm: "Monitoring stopped. Moralis Stream deregistered."
+1. Call `smart-money-custom { action: "remove", address: "0x..." }` — on-chain subscription auto-cancelled
+2. Update or cancel the associated Cron job
+3. Confirm: "Monitoring stopped. On-chain subscription cancelled."
 
 ### On "List my custom addresses" / "查看我的自定义监控"
 1. Call `smart-money-custom { action: "list" }`
@@ -295,23 +296,22 @@ Other: Nansen Smart Money 1, Alameda Research (Remnant), Celsius (Remnant)
 
 ## Data Source
 
-- **Moralis Web3 API** — ERC20 transfers, native transfers, token prices
-- **Moralis Streams API** (v1.1+) — real-time LP events + custom address webhooks
+- **On-chain data provider** — ERC20 transfers, native transfers, token prices
+- **Real-time event streams** (v1.1+) — LP events + custom address webhook ingestion
 - **ETH Mainnet only** (V1)
 
 ## Changelog
 
 ### v1.2.1 (2026-04-17)
-- New: Mandatory Cron setup prompt after `smart-money-custom action=add`
-- New: Strong-nudge warning copy (EN + ZH): "without Cron you will NEVER be notified"
-- New: Recommended Cron interval changed to 15 min (was 1h); `--session isolated` flag added
-- New: Monitor state file schema documents `cron_name` field
-- Improved: Agent Behavior Rules — `add` flow now includes mandatory Cron prompt step
+- New: Agent auto-creates Cron after `smart-money-custom action=add` (no user prompt needed)
+- New: Strong-nudge copy (EN + ZH): "you will NEVER be alerted without Cron"
+- New: Recommended interval 15 min, `--session isolated`; agent executes without extra confirm
+- Improved: Agent Behavior Rules — `add` flow creates Cron immediately, optional only on explicit refusal
 
 ### v1.2.0 (2026-04-17)
-- New: `smart-money-custom` upgraded — `add/remove/list` with Moralis Streams auto-registration
-- New: Reference Counting (RC) — same address across multiple agents shares ONE Moralis Stream
-- New: `sm_stream_registry` global address→Stream registry table
+- New: `smart-money-custom` upgraded — `add/remove/list` with on-chain subscription auto-management
+- New: Reference Counting (RC) — same address across multiple agents shares ONE subscription stream
+- New: `sm_stream_registry` global address→stream registry table
 - New: `agent_watched_wallets` per-agent custom watchlist table
 - New: `smart-money-signal` merges public pool + agent custom addresses (two-path query)
 - Improved: `smart-money-custom action=list` returns `stream_id` + `added_at`
@@ -319,7 +319,7 @@ Other: Nansen Smart Money 1, Alameda Research (Remnant), Celsius (Remnant)
 ### v1.1.0 (2026-04-14)
 - New: `smart-money-pool` tool — query whale LP add/remove activity on Uniswap V2/V3
 - New: `smart-money-signal` extended with `POOL_IN` / `POOL_OUT` signal types
-- New: Moralis Streams API integration for real-time LP event ingestion
+- New: Real-time on-chain event stream integration for LP event ingestion
 
 ### v1.0.2
 - Added auto-monitoring setup guide and agent behavior rules
@@ -335,7 +335,7 @@ Other: Nansen Smart Money 1, Alameda Research (Remnant), Celsius (Remnant)
 - Agent identity via UUID — no private keys involved
 - `api_key` is secret; store securely, never expose in logs or prompts
 - Custom watchlist addresses are isolated per `agent_id` (multi-tenant)
-- Moralis Stream deregistered automatically on `remove` (no zombie streams)
+- On-chain subscription cancelled automatically on `remove` (no zombie subscriptions)
 - All data comes from public blockchain; no user funds are touched
 
 ---
