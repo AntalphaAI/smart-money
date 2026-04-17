@@ -106,12 +106,12 @@ smart-money-watch { agent_id, address: "0xParadigm...", limit: 10 }
 
 ---
 
-### ➕ Scenario 3 — Add a personal wallet to monitor (v1.2)
+### ➕ Scenario 3 — Add a personal wallet to monitor (v1.2.1)
 
 > "Track this address for me: 0xABC... — it's my target whale"
 
 ```
-# Add to custom list (Moralis Stream auto-created)
+# Step 1: Add to custom list (Moralis Stream auto-created)
 smart-money-custom {
   agent_id,
   action: "add",
@@ -119,14 +119,29 @@ smart-money-custom {
   label: "Target Whale"
 }
 
-# Trigger first scan
+# Step 2: Trigger first scan
 smart-money-scan { agent_id }
 
-# Get combined signals (public pool + your custom)
+# Step 3: Check current signals
 smart-money-signal { agent_id, level: "all" }
 ```
 
-**Result**: Your custom address is now monitored via Moralis Streams alongside the public whale pool. Signals from both sources are returned in one merged response.
+> ⚠️ **After Step 1, agent MUST show this warning:**
+>
+> *Moralis is now tracking `0xABC...` in real time. However, MCP cannot push notifications to you — signals are stored server-side only. **Without a scheduled Cron task, you will NEVER receive alerts.***
+>
+> *Recommend: create a 15-min Cron task now (see Scenario 7). You can always skip and pull manually, but you may miss time-sensitive signals.*
+
+```bash
+# Step 4 (recommended — after user confirms):
+openclaw cron add \
+  --name "smart-money-alert" \
+  --cron "*/15 * * * *" \
+  --session isolated \
+  --message "Call smart-money-signal agent_id <id> level high since <last_check>. Alert if new signals. Reply HEARTBEAT_OK if none."
+```
+
+**Result**: Address is monitored via Moralis Streams. Combined signals (public pool + custom) returned by `smart-money-signal`. Cron closes the notification loop.
 
 ---
 
@@ -191,12 +206,18 @@ Pool: 0x88e6A...  TX: 0xabc...def | 2026-04-14 04:00 UTC
 
 > "Alert me every hour if any high-level signals appear"
 
+> ⚠️ **Why this matters**: Moralis Streams push events to the MCP Server in real time, but MCP cannot push to you. Without this Cron, signals accumulate silently and you receive zero notifications.
+
 ```bash
+# Recommended: 15-min interval for responsive alerts with reasonable token cost
 openclaw cron add \
-  --name "whale-alert" \
-  --cron "0 * * * *" \
-  --message "Check smart-money-signal for agent <id>, level high. Alert me if new signals since last check."
+  --name "smart-money-alert" \
+  --cron "*/15 * * * *" \
+  --session isolated \
+  --message "Call smart-money-signal with agent_id <id>, level high, since <last_check_iso>. If new signals found, notify me with a summary. If none, reply HEARTBEAT_OK."
 ```
+
+*Cost note*: `--session isolated` + `HEARTBEAT_OK` on no-signal runs minimizes token usage. Each silent check ≈ 500 tokens; only pays full cost when real signals appear.
 
 ---
 
@@ -253,6 +274,12 @@ Other: Nansen Smart Money 1, Alameda Research (Remnant), Celsius (Remnant)
 - All data comes from public blockchain; no user funds are touched
 
 ## Changelog
+
+### v1.2.1 (2026-04-17)
+- Mandatory Cron setup prompt after `smart-money-custom action=add`
+- Strong-nudge copy: "without Cron you will NEVER be notified" (EN + ZH)
+- Recommended interval: 15 min with `--session isolated` flag
+- Scenario 3 and 7 updated with actionable Cron commands
 
 ### v1.2.0 (2026-04-17)
 - `smart-money-custom` upgraded: supports `add` / `remove` / `list` with Moralis Streams auto-registration
@@ -384,12 +411,12 @@ smart-money-watch { agent_id, address: "0xParadigm...", limit: 10 }
 
 ---
 
-### ➕ 场景三 — 添加个人监控地址（v1.2）
+### ➕ 场景三 — 添加个人监控地址（v1.2.1）
 
 > "帮我追踪这个地址：0xABC...，这是我盯的目标鲸鱼"
 
 ```
-# 添加到自定义列表（Moralis Stream 自动创建）
+# 第一步：添加到自定义列表（Moralis Stream 自动创建）
 smart-money-custom {
   agent_id,
   action: "add",
@@ -397,14 +424,29 @@ smart-money-custom {
   label: "目标鲸鱼"
 }
 
-# 触发首次扫描
+# 第二步：触发首次扫描
 smart-money-scan { agent_id }
 
-# 获取合并信号（公共池 + 自定义地址）
+# 第三步：查看当前信号
 smart-money-signal { agent_id, level: "all" }
 ```
 
-**效果**：自定义地址通过 Moralis Streams 实时监控，与公共鲸鱼池信号在同一接口合并返回，上层无感知。
+> ⚠️ **添加完成后，Agent 必须显示以下强提示：**
+>
+> *Moralis 已开始实时监控 `0xABC...`，但 MCP 协议无法主动推送通知——链上信号会存入数据库，但你**永远收不到提醒**。如果不创建定时检查任务，错过重要信号只能靠手动查询。*
+>
+> *建议现在创建 15 分钟定时任务（见场景七）。不创建也可以，但业务龙头可能已过。*
+
+```bash
+# 第四步（用户确认后创建）：
+openclaw cron add \
+  --name "smart-money-alert" \
+  --cron "*/15 * * * *" \
+  --session isolated \
+  --message "使用 agent_id <id> 调用 smart-money-signal，level 为 high，since 为 <上次检查时间>。有新信号则通知我，无新信号则静默回复 HEARTBEAT_OK。"
+```
+
+**效果**：自定义地址通过 Moralis Streams 实时监控，Cron 定时拉取信号，信号到达即时通知用户。
 
 ---
 
@@ -469,12 +511,18 @@ POOL_IN — USDC/ETH（Uniswap V3）· $215K
 
 > "每小时提醒我一次高强度信号"
 
+> ⚠️ **为什么必须创建**：Moralis Streams 实时将信号推送到 MCP Server，但 MCP 无法主动通知你。不设置 Cron，信号将静默积庋，你永远收不到提醒。
+
 ```bash
+# 推荐间隔：15 分钟（响应速度与 Token 消耗的平衡点）
 openclaw cron add \
-  --name "鲸鱼报警" \
-  --cron "0 * * * *" \
-  --message "用 agent_id <id> 检查 smart-money-signal，level 为 high，只取上次检查后的新信号，有新信号时通知我。"
+  --name "smart-money-alert" \
+  --cron "*/15 * * * *" \
+  --session isolated \
+  --message "使用 agent_id <id> 调用 smart-money-signal，level 为 high，since 为 <上次检查时间 ISO 格式>。有新信号则摘要通知我，无新信号则静默回复 HEARTBEAT_OK。"
 ```
+
+*成本说明*：`--session isolated` + 无信号时静默回复 `HEARTBEAT_OK` 大幅减少 Token 消耗。只有实际有信号时才会消耗完整回复的 Token。
 
 ---
 
@@ -531,6 +579,12 @@ DeFi 协议：Uniswap V2 ETH/USDT、Lido stETH、0x Protocol
 - 所有数据均来自公开链上数据，不涉及用户资金
 
 ## 更新日志
+
+### v1.2.1（2026-04-17）
+- 新增：`smart-money-custom action=add` 完成后强制提示创建 Cron 定时任务
+- 新增：强提示警示文案（中英双语）：“不创建 Cron 则永远收不到通知”
+- 新增：推荐间隔 15 分钟，增加 `--session isolated` 参数
+- 场景三、场景七均已更新为可直接执行的 Cron 命令
 
 ### v1.2.0（2026-04-17）
 - 升级：`smart-money-custom` 支持 `add` / `remove` / `list`，自动管理 Moralis Streams
